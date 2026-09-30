@@ -54,17 +54,22 @@ export function PasswordWorkshop() {
     setSentence(value)
     clearResult()
     if (!value.trim()) {
+      setSettings(DEFAULT_SETTINGS)
       setSynced(true)
-      setError(errorFromValidation(settings))
+      setError(errorFromValidation(DEFAULT_SETTINGS))
       setHint(HINT_DEFAULT)
       return
     }
-    const parsed = parseRuleText(value, settings.length)
+    const parsed = parseRuleText(value, DEFAULT_SETTINGS.length)
     if (parsed.ok) {
       setSettings(parsed.settings)
-      setSynced(true)
+      setSynced(parsed.unreadable.length === 0)
       setError(errorFromValidation(parsed.settings))
-      setHint('Your typed rules are applied below.')
+      setHint(
+        parsed.unreadable.length === 0
+          ? 'Your typed rules are applied below.'
+          : `Applied what we could read. Still reading: \u2018${parsed.unreadable.join('\u2019, \u2018')}\u2019.`,
+      )
     } else {
       setSynced(false)
       setError(null)
@@ -73,9 +78,16 @@ export function PasswordWorkshop() {
   }
 
   function handleApply() {
-    const parsed = parseRuleText(sentence, settings.length)
+    const parsed = parseRuleText(sentence, DEFAULT_SETTINGS.length)
     if (!parsed.ok) {
       setError({ message: parsed.message })
+      return
+    }
+    if (parsed.unreadable.length > 0) {
+      setSettings(parsed.settings)
+      setError({
+        message: `We couldn\u2019t read this part: \u2018${parsed.unreadable[0]}\u2019. Try something like \u20182 symbols\u2019.`,
+      })
       return
     }
     setSettings(parsed.settings)

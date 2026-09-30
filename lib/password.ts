@@ -130,19 +130,40 @@ export function generatePassword(length: number, rules: Rule[]): string {
   throw new Error('Could not generate a password that meets the rules.')
 }
 
+const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+const TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60 }
+
+function wordToNumber(word: string): string | null {
+  if (/^\d+$/.test(word)) return word
+  if (word === 'a' || word === 'an') return '1'
+  const index = ONES.indexOf(word)
+  if (index >= 0) return String(index)
+  const [tens, ones] = word.split('-')
+  if (tens in TENS) {
+    if (ones === undefined) return String(TENS[tens])
+    const o = ONES.indexOf(ones)
+    if (o >= 1 && o <= 9) return String(TENS[tens] + o)
+  }
+  return null
+}
+
+const NUM = '(\\d+|an?|[a-z]+(?:-[a-z]+)?)'
 const PHRASES: { pattern: RegExp; key: 'length' | CharType }[] = [
-  { pattern: /^(\d+)\s+characters?(?:\s+minimum)?$/, key: 'length' },
-  { pattern: /^(\d+)\s+uppercase(?:\s+letters?)?(?:\s+minimum)?$/, key: 'uppercase' },
-  { pattern: /^(\d+)\s+lowercase(?:\s+letters?)?(?:\s+minimum)?$/, key: 'lowercase' },
-  { pattern: /^(\d+)\s+numbers?(?:\s+minimum)?$/, key: 'number' },
-  { pattern: /^(\d+)\s+symbols?(?:\s+minimum)?$/, key: 'symbol' },
+  { pattern: new RegExp(`^(?:at least )?${NUM} (?:characters?|chars?|letters? long|long)(?: minimum| long)?$`), key: 'length' },
+  { pattern: new RegExp(`^(?:at least )?${NUM} (?:uppercase|upper case|capital)(?: letters?)?(?: minimum)?$`), key: 'uppercase' },
+  { pattern: new RegExp(`^(?:at least )?${NUM} (?:lowercase|lower case|small)(?: letters?)?(?: minimum)?$`), key: 'lowercase' },
+  { pattern: new RegExp(`^(?:at least )?${NUM} (?:numbers?|digits?|numerals?)(?: minimum)?$`), key: 'number' },
+  { pattern: new RegExp(`^(?:at least )?${NUM} (?:symbols?|special characters?|special chars?)(?: minimum)?$`), key: 'symbol' },
 ]
 
-export type ParseResult = { ok: true; settings: Settings } | { ok: false; message: string }
+export type ParseResult =
+  | { ok: true; settings: Settings; unreadable: string[] }
+  | { ok: false; message: string }
 
 export function parseRuleText(text: string, fallbackLength?: string): ParseResult {
   const parts = text
-    .split(/[,，\n]/)
+    .split(/[,，\n]|\band\b/)
     .map((p) => p.trim().replace(/\s+/g, ' '))
     .filter(Boolean)
 
@@ -151,19 +172,26 @@ export function parseRuleText(text: string, fallbackLength?: string): ParseResul
   }
 
   const found: Partial<Record<'length' | CharType, string>> = {}
+  const unreadable: string[] = []
   for (const part of parts) {
     const lower = part.toLowerCase()
     const match = PHRASES.find((p) => p.pattern.test(lower))
-    if (!match) {
-      return {
-        ok: false,
-        message: `We couldn\u2019t read this part: \u2018${part}\u2019. Follow the example or use the options below.`,
-      }
+    const value = match ? wordToNumber(lower.match(match.pattern)![1]) : null
+    if (!match || value === null) {
+      unreadable.push(part)
+      continue
     }
     if (found[match.key] !== undefined) {
       return { ok: false, message: 'A rule appears twice. Please list each rule only once.' }
     }
-    found[match.key] = lower.match(match.pattern)![1]
+    found[match.key] = value
+  }
+
+  if (unreadable.length === parts.length) {
+    return {
+      ok: false,
+      message: `We couldn\u2019t read this part: \u2018${unreadable[0]}\u2019. Try something like \u20182 symbols\u2019.`,
+    }
   }
 
   if (found.length === undefined) {
@@ -178,7 +206,9 @@ export function parseRuleText(text: string, fallbackLength?: string): ParseResul
 
   const listedTypes = CHAR_TYPES.filter((t) => found[t] !== undefined)
   if (listedTypes.length === 0) {
-    return { ok: false, message: 'What should we include? Add at least one character type, such as \u20181 number\u2019.' }
+    const types = {} as Record<CharType, TypeSetting>
+    for (const type of CHAR_TYPES) types[type] = { ...DEFAULT_SETTINGS.types[type] }
+    return { ok: true, settings: { length: String(Number(found.length)), types }, unreadable }
   }
   for (const type of listedTypes) {
     if (parseWholeNumber(found[type]!, COUNT_MIN, COUNT_MAX) === null) {
@@ -192,5 +222,5 @@ export function parseRuleText(text: string, fallbackLength?: string): ParseResul
     types[type] = value !== undefined ? { checked: true, min: String(Number(value)) } : { checked: false, min: '1' }
   }
 
-  return { ok: true, settings: { length: String(Number(found.length)), types } }
+  return { ok: true, settings: { length: String(Number(found.length)), types }, unreadable }
 }
