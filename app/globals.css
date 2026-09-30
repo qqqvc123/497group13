@@ -153,6 +153,32 @@
   }
 }
 
+:root {
+  --pw-bg: light-dark(#f7f4eb, #202923);
+  --pw-paper: light-dark(#fffefa, #2a342d);
+  --pw-ink: light-dark(#293b32, #edf2e9);
+  --pw-sub: light-dark(#626c60, #bac6b8);
+  --pw-line: light-dark(#dce1d4, #536252);
+  --pw-green: light-dark(#2c624d, #b0d7b8);
+  --pw-on: light-dark(#fffefa, #173626);
+  --pw-mint: light-dark(#eaf2e8, #2d4235);
+  --pw-warn: light-dark(#fff0e5, #483326);
+  --pw-warnink: light-dark(#884624, #ffd4b8);
+}
+
+@theme inline {
+  --color-pw-bg: var(--pw-bg);
+  --color-pw-paper: var(--pw-paper);
+  --color-pw-ink: var(--pw-ink);
+  --color-pw-sub: var(--pw-sub);
+  --color-pw-line: var(--pw-line);
+  --color-pw-green: var(--pw-green);
+  --color-pw-on: var(--pw-on);
+  --color-pw-mint: var(--pw-mint);
+  --color-pw-warn: var(--pw-warn);
+  --color-pw-warnink: var(--pw-warnink);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

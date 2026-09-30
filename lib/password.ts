@@ -12,8 +12,8 @@ export const CHAR_SETS: Record<CharType, string> = {
 export const CHAR_META: Record<CharType, { icon: string; label: string; plural: string }> = {
   uppercase: { icon: 'A', label: 'Uppercase', plural: 'uppercase' },
   lowercase: { icon: 'a', label: 'Lowercase', plural: 'lowercase' },
-  number: { icon: '1', label: 'Numbers', plural: 'numbers' },
-  symbol: { icon: '#', label: 'Symbols', plural: 'symbols' },
+  number: { icon: '1', label: 'Number', plural: 'numbers' },
+  symbol: { icon: '#', label: 'Symbol', plural: 'symbols' },
 }
 
 export const LENGTH_MIN = 4
@@ -131,23 +131,23 @@ export function generatePassword(length: number, rules: Rule[]): string {
 }
 
 const PHRASES: { pattern: RegExp; key: 'length' | CharType }[] = [
-  { pattern: /^(\d+)\s+characters?\s+minimum$/, key: 'length' },
-  { pattern: /^(\d+)\s+uppercase$/, key: 'uppercase' },
-  { pattern: /^(\d+)\s+lowercase$/, key: 'lowercase' },
-  { pattern: /^(\d+)\s+numbers?$/, key: 'number' },
-  { pattern: /^(\d+)\s+symbols?$/, key: 'symbol' },
+  { pattern: /^(\d+)\s+characters?(?:\s+minimum)?$/, key: 'length' },
+  { pattern: /^(\d+)\s+uppercase(?:\s+letters?)?(?:\s+minimum)?$/, key: 'uppercase' },
+  { pattern: /^(\d+)\s+lowercase(?:\s+letters?)?(?:\s+minimum)?$/, key: 'lowercase' },
+  { pattern: /^(\d+)\s+numbers?(?:\s+minimum)?$/, key: 'number' },
+  { pattern: /^(\d+)\s+symbols?(?:\s+minimum)?$/, key: 'symbol' },
 ]
 
 export type ParseResult = { ok: true; settings: Settings } | { ok: false; message: string }
 
 export function parseRuleText(text: string): ParseResult {
   const parts = text
-    .split(',')
+    .split(/[,，\n]/)
     .map((p) => p.trim().replace(/\s+/g, ' '))
     .filter(Boolean)
 
   if (parts.length === 0) {
-    return { ok: false, message: 'Type your rules first, or use the options below.' }
+    return { ok: false, message: 'Type your requirements first, or use the options below.' }
   }
 
   const found: Partial<Record<'length' | CharType, string>> = {}
