@@ -140,7 +140,7 @@ const PHRASES: { pattern: RegExp; key: 'length' | CharType }[] = [
 
 export type ParseResult = { ok: true; settings: Settings } | { ok: false; message: string }
 
-export function parseRuleText(text: string): ParseResult {
+export function parseRuleText(text: string, fallbackLength?: string): ParseResult {
   const parts = text
     .split(/[,，\n]/)
     .map((p) => p.trim().replace(/\s+/g, ' '))
@@ -167,7 +167,10 @@ export function parseRuleText(text: string): ParseResult {
   }
 
   if (found.length === undefined) {
-    return { ok: false, message: 'Add a length, such as \u201812 characters minimum\u2019.' }
+  if (fallbackLength === undefined) {
+  return { ok: false, message: 'Add a length, such as \u201812 characters minimum\u2019.' }
+  }
+  found.length = fallbackLength
   }
   if (parseWholeNumber(found.length, LENGTH_MIN, LENGTH_MAX) === null) {
     return { ok: false, message: lengthErrorMessage }

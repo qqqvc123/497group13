@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { KeyRound } from 'lucide-react'
 import {
   type Settings,
   DEFAULT_SETTINGS,
@@ -27,9 +26,10 @@ export function PasswordWorkshop() {
   const [error, setError] = useState<WorkshopError | null>(null)
   const [password, setPassword] = useState('')
   const [notice, setNotice] = useState('')
+  const [synced, setSynced] = useState(true)
   const passwordRef = useRef('')
 
-  const dirty = sentence.trim().length > 0
+  const dirty = !synced
 
   function clearResult() {
     passwordRef.current = ''
@@ -40,6 +40,7 @@ export function PasswordWorkshop() {
   function applySettings(next: Settings, nextHint: string) {
     setSettings(next)
     setSentence('')
+    setSynced(true)
     setHint(nextHint)
     clearResult()
     setError(errorFromValidation(next))
@@ -52,17 +53,35 @@ export function PasswordWorkshop() {
   function handleSentenceChange(value: string) {
     setSentence(value)
     clearResult()
-    setError(null)
-    setHint(value.trim() ? 'Apply your typed rules before generating.' : HINT_DEFAULT)
+    if (!value.trim()) {
+      setSynced(true)
+      setError(errorFromValidation(settings))
+      setHint(HINT_DEFAULT)
+      return
+    }
+    const parsed = parseRuleText(value, settings.length)
+    if (parsed.ok) {
+      setSettings(parsed.settings)
+      setSynced(true)
+      setError(errorFromValidation(parsed.settings))
+      setHint('Your typed rules are applied below.')
+    } else {
+      setSynced(false)
+      setError(null)
+      setHint('Keep typing. Rules update below once they can be read.')
+    }
   }
 
   function handleApply() {
-    const parsed = parseRuleText(sentence)
+    const parsed = parseRuleText(sentence, settings.length)
     if (!parsed.ok) {
       setError({ message: parsed.message })
       return
     }
-    applySettings(parsed.settings, 'Applied. Check your choices below.')
+    setSettings(parsed.settings)
+    setSynced(true)
+    setError(errorFromValidation(parsed.settings))
+    setHint('Your typed rules are applied below.')
   }
 
   function handleFix(length: number) {
@@ -102,17 +121,7 @@ export function PasswordWorkshop() {
 
   return (
     <div className="mx-auto w-full max-w-5xl rounded-[20px] bg-pw-bg p-3 text-pw-ink min-[381px]:p-[18px] md:p-[26px]">
-      <header className="flex flex-col items-start justify-between gap-3 border-b border-pw-line pb-[18px] min-[381px]:flex-row min-[381px]:items-center">
-        <div className="flex flex-wrap items-center gap-2 font-bold">
-          <KeyRound className="size-5 text-pw-green" aria-hidden="true" />
-          Password Workshop
-        </div>
-        <span className="whitespace-nowrap rounded-full border border-pw-line px-2.5 py-0.5 text-xs tracking-wider text-pw-sub">
-          {'PROTOTYPE · 01'}
-        </span>
-      </header>
-
-      <div className="pb-6 pt-[26px]">
+      <div className="pb-6 pt-2">
         <h1 className="mb-2 text-balance text-[25px] font-bold leading-snug tracking-tight md:text-[28px]">
           Your rules.
           <br />A password that fits.
@@ -141,10 +150,6 @@ export function PasswordWorkshop() {
           onRegenerate={handleGenerate}
         />
       </div>
-
-      <p className="mt-[18px] text-center text-xs text-pw-sub">
-        {'Choose → Create → Check · One password, made to fit'}
-      </p>
     </div>
   )
 }
