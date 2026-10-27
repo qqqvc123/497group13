@@ -176,8 +176,8 @@ $('copy').addEventListener('click',async()=>{
   }
 });
 
-// Start with the reference's example rules and a freshly generated, local result.
-analyze();createPassword(false);
+// Show the example rules, but generate a password only after a user action.
+analyze();
 
 if(document.modelContext?.registerTool) {
   const lifecycle=new AbortController();

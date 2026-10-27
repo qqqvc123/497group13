@@ -45,9 +45,9 @@ At least 1 special character</textarea>
       <div class="password-card">
         <div class="password-meta"><span id="password-label">Your new password</span><span id="password-length" class="hint"></span></div>
         <div id="password-display" class="password-display" role="group" aria-labelledby="password-label" tabindex="0" hidden></div>
-        <input id="password" class="password" type="text" readonly autocomplete="off" spellcheck="false" aria-labelledby="password-label" aria-describedby="result-status" placeholder="Your password will appear here">
-        <div id="empty-state" class="empty-state" hidden>Check the rules, then select <strong>Generate Password</strong>.</div>
-        <details id="reading-help" open>
+        <input id="password" class="password" type="text" readonly autocomplete="off" spellcheck="false" aria-labelledby="password-label" aria-describedby="result-status">
+        <div id="empty-state" class="empty-state">Check the rules, then select <strong>Generate Password</strong>.</div>
+        <details id="reading-help" open hidden>
           <summary>Help reading this password <span class="chevron" aria-hidden="true"></span></summary>
           <ul class="character-key" aria-label="Compare similar characters">
             <li><code class="password-character number-zero">0</code><span>Number zero</span></li>
@@ -57,9 +57,9 @@ At least 1 special character</textarea>
           <p class="hint reading-note">Read your password from left to right. The line through <strong>0</strong> marks the number zero.</p>
           <div class="reading-table" role="region" aria-label="Each character in your password" tabindex="0"><table><thead><tr><th scope="col">Position</th><th scope="col">Character</th><th scope="col">Easy explanation</th></tr></thead><tbody id="password-characters"></tbody></table></div>
         </details>
-        <button type="button" id="reveal" class="text-button reveal" aria-pressed="true" aria-controls="password password-display reading-help"><svg class="icon" aria-hidden="true"><use href="#icon-eye-off"/></svg><span id="reveal-label">Hide password</span></button>
+        <button type="button" id="reveal" class="text-button reveal" aria-pressed="true" aria-controls="password password-display reading-help" disabled><svg class="icon" aria-hidden="true"><use href="#icon-eye-off"/></svg><span id="reveal-label">Hide password</span></button>
       </div>
-      <div class="result-actions"><button type="button" id="copy" class="primary full"><svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg><span id="copy-label">Copy password</span></button><button type="button" id="again" class="outline full"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Regenerate password</button></div>
+      <div class="result-actions"><button type="button" id="copy" class="primary full" disabled><svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg><span id="copy-label">Copy password</span></button><button type="button" id="again" class="outline full" disabled><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Regenerate password</button></div>
       <p id="result-status" class="result-status" role="status"></p>
       <section id="checks-panel" class="soft-panel" aria-labelledby="checks-title" hidden><h3 id="checks-title">All requirements met</h3><ul id="checklist" class="checklist"></ul></section>
       <aside class="soft-panel safety-note"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg><div><h3>Keep it somewhere safe</h3><p>Save this in your password manager. Use a different password for every account.</p></div></aside>
