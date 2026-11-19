@@ -3,6 +3,7 @@ export const groups = {
   digit: '0123456789', symbol: '!@#$%^&*',
 };
 export const names = {upper:'Uppercase letters', lower:'Lowercase letters', digit:'Numbers', symbol:'Symbols'};
+export const preferredLength = 16;
 export const lookAlikes = 'Il1O0';
 const numberWords = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12,sixteen:16};
 
@@ -18,13 +19,23 @@ export function parseRules(text) {
     || t.match(/(?:minimum|min)\s+length\s*(?:of|is|:|=)?\s*(\d+)/)
     || t.match(/(\d+)\s*(?:characters?|chars?|자|자리)\s*(?:이상|or more)/)
     || t.match(/(\d+)\+\s*(?:characters?|chars?)/);
-  const max = t.match(/(?:at most|up to|maximum(?:\s+of)?|max(?:imum)?\s*[:=]?|최대)\s*(\d+)\s*(?:characters?|chars?|자|자리)/)
+  const max = t.match(/(?:at most|no more than|up to|maximum(?:\s+of)?|max(?:imum)?\s*[:=]?|최대)\s*(\d+)\s*(?:characters?|chars?|자|자리)/)
     || t.match(/(?:maximum|max)\s+length\s*(?:of|is|:|=)?\s*(\d+)/)
     || t.match(/(\d+)\s*(?:characters?|chars?|자|자리)\s*(?:이하|or fewer)/);
+  const pairedBounds = t.match(/\b(?:min(?:imum)?)\s+(\d+)\s*(?:,|and|;)\s*(?:max(?:imum)?)\s+(\d+)\b(?!\s+(?:upper|lower|numbers?|digits?|symbols?|special))/);
+  if (pairedBounds) {
+    rule.min=Number(pairedBounds[1]);rule.max=Number(pairedBounds[2]);foundMin=foundMax=true;recognized++;
+  }
   if (range) {rule.min=+range[1];rule.max=+range[2];foundMin=foundMax=true;recognized++;}
   if (min) {rule.min=+min[1];foundMin=true;recognized++;}
   if (max) {rule.max=+max[1];foundMax=true;recognized++;}
-  if (exact) {rule.min=rule.max=+exact[1];foundMin=foundMax=true;recognized++;}
+  if (exact) {
+    const length=Number(exact[1]);
+    rule.min=foundMin?Math.max(rule.min,length):length;
+    rule.max=foundMax?Math.min(rule.max,length):length;
+    foundMin=foundMax=true;
+    recognized++;
+  }
   const terms = {upper:'upper[ -]?case(?:\\s+letters?)?|capital(?:\\s+letters?)?|대문자',lower:'lower[ -]?case(?:\\s+letters?)?|소문자',digit:'numbers?|digits?|숫자',symbol:'special\\s+characters?|symbols?|특수\\s*문자'};
   // Symbol allowlists are handled separately so "Allowed symbols" does not imply a required symbol.
   const categoryText=t.replace(/(?:allowed\s+(?:special\s+characters|symbols)|허용\s*특수문자)\s*[:：][^\n]*/g,'');
@@ -33,24 +44,30 @@ export function parseRules(text) {
     recognized++;
     const negative = new RegExp('(?:no|without|exclude|must not (?:include|contain)|cannot (?:include|contain))\\s+(?:any\\s+)?(?:'+term+')|(?:'+term+')\\s*(?:(?:are|is)\\s+)?(?:not allowed|prohibited|금지|불가|제외|사용 불가|사용하지)','i');
     const optional = new RegExp('(?:'+term+')\\s*(?:are\\s+|is\\s+)?(?:optional|선택)|optional\\s+(?:'+term+')','i');
-    if (negative.test(categoryText)) {rule.allowed[key]=false;continue;}
-    if (optional.test(categoryText)) continue;
-    const before = categoryText.match(new RegExp('(\\d+)\\s+(?:'+term+')','i'));
-    const after = categoryText.match(new RegExp('(?:'+term+')\\s*(?:최소\\s*)?(\\d+)\\s*(?:개|자)?','i'));
-    rule.counts[key] = before ? +before[1] : after ? +after[1] : 1;
+    rule.allowed[key] = !negative.test(categoryText);
+    const requiredText = categoryText
+      .replace(new RegExp(negative.source, 'gi'), ' ')
+      .replace(new RegExp(optional.source, 'gi'), ' ');
+    if (!new RegExp(term, 'i').test(requiredText)) continue;
+    const before = [...requiredText.matchAll(new RegExp('(\\d+)\\s+(?:'+term+')','gi'))];
+    const after = [...requiredText.matchAll(new RegExp('(?:'+term+')[ \\t]*(?:최소[ \\t]*)?(\\d+)[ \\t]*(?:개|자)?','gi'))];
+    const counts = [...before, ...after].map(match => Number(match[1]));
+    rule.counts[key] = counts.length ? Math.max(...counts) : 1;
   }
-  if (/(?:only\s+(?:numbers|digits)|(?:numbers|digits)\s+only|숫자만)/.test(t)) {
-    rule.allowed={upper:false,lower:false,digit:true,symbol:false};rule.counts={upper:0,lower:0,digit:1,symbol:0};recognized++;
+  if (/(?:only\s+(?:numbers|digits)|(?:numbers|digits)\s+only|숫자만)/.test(t) && !/영문과?\s*숫자만/.test(t)) {
+    for (const key of ['upper','lower','symbol']) rule.allowed[key]=false;
+    rule.counts.digit=Math.max(rule.counts.digit,1);
+    recognized++;
   }
-  if (/alphanumeric\s+only|only\s+alphanumeric|영문과?\s*숫자만/.test(t)) {rule.allowed.symbol=false;rule.counts.symbol=0;recognized++;}
-  const symbols = text.match(/(?:allowed\s+(?:special\s+characters|symbols)|허용\s*특수문자)\s*[:：]\s*([^\n]+)/i);
+  if (/alphanumeric\s+only|only\s+alphanumeric|영문과?\s*숫자만/.test(t)) {rule.allowed.symbol=false;recognized++;}
+  const symbols = text.match(/(?:allowed\s+(?:special\s+characters|symbols)|허용\s*특수문자)\s*[:：][ \t]*([^\n]*)/i);
   if (symbols) {rule.symbols=[...new Set([...symbols[1]].filter(c=>/^[!-~]$/.test(c)&&!/[a-z0-9]/i.test(c)))].join('');recognized++;}
   if (!foundMin) defaults.push('No minimum length found; 8 characters is used.');
   if (!foundMax) defaults.push('No maximum length found; this prototype uses a limit of 128.');
   if (/consecutive|repeat|username|user name|dictionary|previous|three of|3 of|two of|2 of|연속|반복|아이디/.test(t)) {
-    warnings.push('Some extra rules cannot be checked here (for example, repeated characters or your username). Review the original text; this prototype only checks length, character types, and allowed symbols.');
+    warnings.push('Some extra rules cannot be checked here (for example, repeated characters or your username). Review the original text; check the listed rules against the website’s instructions.');
   }
-  rule.length=Math.min(rule.max,Math.max(16,rule.min,Object.values(rule.counts).reduce((a,b)=>a+b,0)));
+  rule.length=Math.min(rule.max,Math.max(preferredLength,rule.min,Object.values(rule.counts).reduce((a,b)=>a+b,0)));
   return {rule, recognized, defaults, warnings, foundMin, foundMax};
 }
 
@@ -66,7 +83,7 @@ export function validate(rule) {
   for (const key of Object.keys(groups)) {
     const n=rule.counts[key];
     if (!Number.isInteger(n)||n<0||n>128) throw new Error('Enter a whole number from 0 to 128 for each required count.');
-    if (!rule.allowed[key] && n>0) throw new Error(names[key]+' are not allowed. Set their required count to 0 or allow them.');
+    if (!rule.allowed[key] && n>0) throw new Error(names[key]+' are required by one rule and not allowed by another. Uncheck, edit or remove one of these rules.');
     if (rule.allowed[key]) {
       if (key==='symbol' && [...rule.symbols].some(c=>!(/^[!-~]$/.test(c))||/[a-z0-9]/i.test(c))) throw new Error('Use only keyboard symbols in Allowed symbols. Remove letters, numbers, and spaces.');
       const chars=characters(rule,key);

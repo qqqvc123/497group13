@@ -1,4 +1,4 @@
-import {groups, lookAlikes, parseRules, validate} from './core.mjs';
+import {groups, lookAlikes, preferredLength, parseRules, validate} from './core.mjs';
 
 export const ruleTypes = {
   min: {name:'Minimum length', field:'number', label:'Minimum number of characters'},
@@ -41,7 +41,7 @@ export function entriesFromText(text) {
   }
   for(const key of Object.keys(groups)) {
     if(!parsed.rule.allowed[key])add('no-'+key,true);
-    else if(parsed.rule.counts[key]>0)add(key,parsed.rule.counts[key]);
+    if(parsed.rule.counts[key]>0)add(key,parsed.rule.counts[key]);
   }
   if(/(?:allowed\s+(?:special\s+characters|symbols)|허용\s*특수문자)\s*[:：]/i.test(text))add('symbols',parsed.rule.symbols);
   return {...parsed,entries};
@@ -63,7 +63,7 @@ export function compileRules(entries) {
     if(entry.type==='excludeSimilar')rule.excludeSimilar=true;
   }
   const required=Object.values(rule.counts).reduce((sum,n)=>sum+n,0);
-  rule.length=Math.min(max,Math.max(min,required,minimums.length?min:16));
+  rule.length=Math.min(max,Math.max(min,required,preferredLength));
   validate(rule);
   return rule;
 }

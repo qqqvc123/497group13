@@ -1,9 +1,12 @@
-import {generate, checklist, groups} from './core.mjs';
+import {generate, checklist, groups, preferredLength} from './core.mjs';
 import {ruleTypes, ruleText, validateEntry, entriesFromText, compileRules, checkEntry} from './rules.mjs';
 import {charactersForReading} from './reading.mjs';
 
 const $=id=>document.getElementById(id);
 let entries=[], nextId=0, copyVersion=0, editingId=null;
+
+let manuallyEdited = false;
+let reviewedText = '';
 
 function icon(name) {
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -40,6 +43,7 @@ function renderReadablePassword(password) {
 function clearPassword() {
   copyVersion++;
   $('password-display').replaceChildren();$('password-characters').replaceChildren();
+  $('generate').hidden=false;
   $('password').value='';$('password-length').textContent='';setVisible(true);
   $('copy-label').textContent='Copy password';$('result-status').textContent='';
   $('checklist').replaceChildren();$('checks-panel').hidden=true;
@@ -52,11 +56,25 @@ function updateSummary() {
   $('rule-count').textContent=active.length===entries.length
     ?`${active.length} ${active.length===1?'rule':'rules'}`
     :`${active.length} of ${entries.length} selected`;
+  const pending = !$('replacement').hidden;
+  $('rule-controls').disabled = pending;
+  $('generate').disabled = true;
+  $('error').textContent = '';
+  if (pending) {
+    $('generation-note').textContent = 'Choose Cancel or Replace rules before generating.';
+    return;
+  }
+  if (!active.length) {
+    $('generation-note').textContent = 'Select at least one rule to generate a password.';
+    return;
+  }
   try {
-    const rule=compileRules(entries);
-    $('generation-note').textContent=`Generates ${rule.length} characters. Check the interpreted rules before generating.`;
-  } catch {
-    $('generation-note').textContent='Check the interpreted rules before generating. You can edit or add any missing rules.';
+    const rule = compileRules(entries);
+    $('generation-note').textContent = `Your selected rules allow a ${rule.length}-character password.`;
+    $('generate').disabled = false;
+  } catch (error) {
+    $('error').textContent = error.message;
+    $('generation-note').textContent = 'Resolve the conflict before generating.';
   }
 }
 function renderRules() {
@@ -66,7 +84,7 @@ function renderRules() {
     const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=entry.enabled;
     checkbox.setAttribute('aria-label','Include '+ruleText(entry));
     checkbox.addEventListener('change',()=>{
-      entry.enabled=checkbox.checked;li.classList.toggle('is-off',!entry.enabled);
+      manuallyEdited=true;entry.enabled=checkbox.checked;li.classList.toggle('is-off',!entry.enabled);
       clearPassword();updateSummary();
     });
     label.append(checkbox);
@@ -74,7 +92,22 @@ function renderRules() {
     edit.dataset.ruleId=entry.id;edit.setAttribute('aria-label','Edit '+ruleText(entry));
     const name=document.createElement('span');name.className='rule-name';name.textContent=ruleText(entry);
     edit.append(name,icon('pencil'));edit.addEventListener('click',()=>openEditor(entry));
-    li.append(label,edit);return li;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'remove';
+    remove.textContent = 'Remove';
+    remove.setAttribute('aria-label', 'Remove ' + ruleText(entry));
+    remove.addEventListener('click', () => {
+      const index = entries.indexOf(entry);
+      entries.splice(index, 1);
+      manuallyEdited = true;
+      clearPassword();
+      renderRules();
+      const next = entries[index] ?? entries[index - 1];
+      const target = next ? document.querySelector(`[data-rule-id="${next.id}"]`) : $('add-rule');
+      target.focus();
+    });
+    li.append(label,edit,remove);return li;
   });
   if(!rows.length) {
     const empty=document.createElement('li');empty.className='rule-empty';
@@ -83,6 +116,9 @@ function renderRules() {
   $('rule-list').replaceChildren(...rows);updateSummary();
 }
 function analyze() {
+  manuallyEdited = false;
+  reviewedText = $('requirements').value;
+  $('replacement').hidden = true;
   clearPassword();
   const text=$('requirements').value.trim(), parsed=entriesFromText(text);
   entries=parsed.entries.map(entry=>({...entry,id:String(++nextId)}));
@@ -90,6 +126,15 @@ function analyze() {
   if(text&&!entries.length)messages.unshift('We could not identify any rules. Use Add a rule to enter the website’s requirements.');
   $('parse-warning').textContent=messages.join(' ');$('parse-warning').hidden=!messages.length;
   renderRules();return parsed;
+}
+function reviewNewText() {
+  if (!manuallyEdited) {
+    analyze();
+    return;
+  }
+  $('replacement').hidden = $('requirements').value === reviewedText;
+  clearPassword();
+  updateSummary();
 }
 function updateEditor() {
   const type=ruleTypes[$('rule-type').value];
@@ -100,14 +145,20 @@ function updateEditor() {
   $('boolean-help').textContent=type.name+'. Select Save rule to apply this condition.';
   $('dialog-error').textContent='';
 }
+function setEditorValues() {
+  const type = $('rule-type').value;
+  const original = entries.find(entry => entry.id === editingId && entry.type === type);
+  const defaultNumbers = {min:12, max:24, exact:16};
+  $('rule-number').value = ruleTypes[type].field === 'number' ? (original?.value ?? defaultNumbers[type] ?? 1) : '';
+  $('rule-symbols').value = type === 'symbols' && original ? original.value : groups.symbol;
+  updateEditor();
+}
 function openEditor(entry=null) {
   editingId=entry?.id??null;
   $('dialog-title').textContent=entry?'Edit rule':'Add a rule';
   $('rule-type').value=entry?.type??Object.keys(ruleTypes).find(type=>!entries.some(e=>e.type===type))??'min';
-  $('rule-number').value=entry&&ruleTypes[entry.type].field==='number'?entry.value:1;
-  if(!entry&&['min','max','exact'].includes($('rule-type').value))$('rule-number').value=$('rule-type').value==='max'?24:12;
-  $('rule-symbols').value=entry?.type==='symbols'?entry.value:groups.symbol;
-  updateEditor();$('rule-dialog').showModal();$('rule-type').focus();
+  setEditorValues();
+  $('rule-dialog').showModal();$('rule-type').focus();
 }
 function saveRule(event) {
   event.preventDefault();
@@ -120,14 +171,22 @@ function saveRule(event) {
     if(entries.some(other=>other.id!==editingId&&other.type===type))throw new Error('This rule already exists. Edit the existing rule instead.');
     if(previous)entries=entries.map(other=>other.id===editingId?entry:other);
     else entries.push(entry);
-    clearPassword();renderRules();$('rule-dialog').close();
+    manuallyEdited=true;clearPassword();renderRules();$('rule-dialog').close();
     document.querySelector(`[data-rule-id="${entry.id}"]`).focus();
   } catch(error) {$('dialog-error').textContent=error.message;}
 }
-function createPassword(announce=true) {
-  clearPassword();
+function createPassword(shortConfirmed = false) {
+  if (!$('replacement').hidden) return;
   try {
-    const rule=compileRules(entries), password=generate(rule), active=entries.filter(entry=>entry.enabled);
+    const rule = compileRules(entries);
+    if (rule.length < preferredLength && !shortConfirmed) {
+      $('short-text').textContent = `These rules limit the password to ${rule.length} characters. A shorter password can be easier to guess. If the website allows more, edit the length rule.`;
+      $('short-dialog').showModal();
+      return;
+    }
+    clearPassword();
+    const password = generate(rule);
+    const active = entries.filter(entry => entry.enabled);
     if(checklist(password,rule).some(row=>!row.ok)||active.some(entry=>!checkEntry(password,entry)))throw new Error('Could not meet the selected rules. Check the rules and try again.');
     $('password').value=password;$('password-length').textContent=`${password.length} characters`;
     renderReadablePassword(password);setVisible(true);$('empty-state').hidden=true;
@@ -140,21 +199,49 @@ function createPassword(announce=true) {
       li.append(mark,accessible,text);return li;
     }));
     $('checks-panel').hidden=false;
-    if(announce) {
-      $('result-status').textContent='New password generated. All selected rules are met.';
-      $('result-title').focus({preventScroll:true});
-      if(matchMedia('(max-width: 900px)').matches)$('result-title').scrollIntoView({block:'start',behavior:'smooth'});
-    }
-  } catch(error) {$('error').textContent=error.message;}
+    $('generate').hidden = true;
+    $('generation-note').textContent = 'Copy your password when you’re ready.';
+    $('result-status').textContent='New password generated.';
+    $('password-display').focus();
+  } catch(error) {clearPassword();updateSummary();$('error').textContent=error.message;}
 }
 
-for(const [value,type] of Object.entries(ruleTypes)) {
-  const option=document.createElement('option');option.value=value;option.textContent=type.name;$('rule-type').append(option);
+const categories = {
+  'Length': ['min', 'max', 'exact'],
+  'Numbers': ['digit', 'no-digit'],
+  'Letters': ['upper', 'no-upper', 'lower', 'no-lower'],
+  'Special characters': ['symbol', 'no-symbol', 'symbols'],
+  'Readability': ['excludeSimilar'],
+};
+for (const [label, values] of Object.entries(categories)) {
+  const group = document.createElement('optgroup');
+  group.label = label;
+  for (const value of values) group.append(new Option(ruleTypes[value].name, value));
+  $('rule-type').append(group);
 }
-$('requirements').addEventListener('input',analyze);
-$('clear').addEventListener('click',()=>{$('requirements').value='';analyze();$('requirements').focus();});
+$('requirements').addEventListener('input', reviewNewText);
+$('clear').addEventListener('click', () => {
+  $('requirements').value = '';
+  reviewNewText();
+  $('requirements').focus();
+});
+$('keep-edits').addEventListener('click', () => {
+  $('requirements').value = reviewedText;
+  $('replacement').hidden = true;
+  updateSummary();
+  $('requirements').focus();
+});
+$('replace-rules').addEventListener('click', () => {
+  analyze();
+  $('requirements').focus();
+});
+$('short-cancel').addEventListener('click', () => $('short-dialog').close());
+$('short-accept').addEventListener('click', () => {
+  $('short-dialog').close();
+  createPassword(true);
+});
 $('add-rule').addEventListener('click',()=>openEditor());
-$('rule-type').addEventListener('change',updateEditor);
+$('rule-type').addEventListener('change',setEditorValues);
 $('rule-form').addEventListener('submit',saveRule);
 for(const id of ['close-dialog','cancel-dialog'])$(id).addEventListener('click',()=>$('rule-dialog').close());
 $('generate').addEventListener('click',()=>createPassword());
@@ -190,7 +277,8 @@ if(document.modelContext?.registerTool) {
       annotations:{readOnlyHint:false},
       execute(input) {
         if(typeof input?.requirements!=='string'||!input.requirements.trim()||input.requirements.length>5000)throw new Error('Requirements must contain 1–5000 characters.');
-        $('requirements').value=input.requirements;analyze();
+        $('requirements').value=input.requirements;reviewNewText();
+        if (!$('replacement').hidden) return {pendingReplacement:true,reviewRequired:true};
         return {rules:entries.map(({id,...entry})=>entry),reviewRequired:true};
       }
     },{signal:lifecycle.signal})).catch(()=>{});
