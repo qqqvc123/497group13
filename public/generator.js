@@ -8,8 +8,15 @@ const groups = {
 };
 const names = {upper:'Uppercase letters', lower:'Lowercase letters', digit:'Numbers', symbol:'Symbols'};
 const preferredLength = 16;
+const minimumTargetLength = 12;
 const lookAlikes = 'Il1O0';
 const numberWords = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12,sixteen:16};
+
+function generationLength({min, max, counts}) {
+  const target = min >= minimumTargetLength ? min : preferredLength;
+  const required = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  return Math.min(max, Math.max(target, required));
+}
 
 function parseRules(text) {
   const t = text.toLowerCase().replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|sixteen)\b/g, x => numberWords[x]);
@@ -71,7 +78,7 @@ function parseRules(text) {
   if (/consecutive|repeat|username|user name|dictionary|previous|three of|3 of|two of|2 of|연속|반복|아이디/.test(t)) {
     warnings.push('Some extra rules cannot be checked here (for example, repeated characters or your username). Review the original text; check the listed rules against the website’s instructions.');
   }
-  rule.length=Math.min(rule.max,Math.max(preferredLength,rule.min,Object.values(rule.counts).reduce((a,b)=>a+b,0)));
+  rule.length = generationLength(rule);
   return {rule, recognized, defaults, warnings, foundMin, foundMax};
 }
 
@@ -201,8 +208,7 @@ function compileRules(entries) {
     if(entry.type==='symbols')rule.symbols=entry.value;
     if(entry.type==='excludeSimilar')rule.excludeSimilar=true;
   }
-  const required=Object.values(rule.counts).reduce((sum,n)=>sum+n,0);
-  rule.length=Math.min(max,Math.max(min,required,preferredLength));
+  rule.length = generationLength(rule);
   validate(rule);
   return rule;
 }
@@ -312,7 +318,14 @@ function updateSummary() {
   }
   try {
     const rule = compileRules(entries);
-    $('generation-note').textContent = `Your selected rules allow a ${rule.length}-character password.`;
+    const bounds = [];
+    if (active.some(entry => entry.type === 'min') && rule.min !== rule.length) {
+      bounds.push(`The selected minimum is ${rule.min}.`);
+    }
+    if (active.some(entry => entry.type === 'max') && rule.max !== rule.length) {
+      bounds.push(`The selected maximum is ${rule.max}.`);
+    }
+    $('generation-note').textContent = [...bounds, `You’ll generate a ${rule.length}-character password.`].join(' ');
     $('generate').disabled = false;
   } catch (error) {
     $('error').textContent = error.message;
@@ -421,8 +434,8 @@ function createPassword(shortConfirmed = false) {
   if (!$('replacement').hidden) return;
   try {
     const rule = compileRules(entries);
-    if (rule.length < preferredLength && !shortConfirmed) {
-      $('short-text').textContent = `These rules limit the password to ${rule.length} characters. A shorter password can be easier to guess. If the website allows more, edit the length rule.`;
+    if (rule.max < preferredLength && !shortConfirmed) {
+      $('short-text').textContent = `Your selected rules allow up to ${rule.max} characters. A shorter password can be easier to guess. Generate a ${rule.length}-character password?`;
       $('short-dialog').showModal();
       return;
     }

@@ -4,8 +4,15 @@ export const groups = {
 };
 export const names = {upper:'Uppercase letters', lower:'Lowercase letters', digit:'Numbers', symbol:'Symbols'};
 export const preferredLength = 16;
+const minimumTargetLength = 12;
 export const lookAlikes = 'Il1O0';
 const numberWords = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12,sixteen:16};
+
+export function generationLength({min, max, counts}) {
+  const target = min >= minimumTargetLength ? min : preferredLength;
+  const required = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  return Math.min(max, Math.max(target, required));
+}
 
 export function parseRules(text) {
   const t = text.toLowerCase().replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|sixteen)\b/g, x => numberWords[x]);
@@ -67,7 +74,7 @@ export function parseRules(text) {
   if (/consecutive|repeat|username|user name|dictionary|previous|three of|3 of|two of|2 of|연속|반복|아이디/.test(t)) {
     warnings.push('Some extra rules cannot be checked here (for example, repeated characters or your username). Review the original text; check the listed rules against the website’s instructions.');
   }
-  rule.length=Math.min(rule.max,Math.max(preferredLength,rule.min,Object.values(rule.counts).reduce((a,b)=>a+b,0)));
+  rule.length = generationLength(rule);
   return {rule, recognized, defaults, warnings, foundMin, foundMax};
 }
 

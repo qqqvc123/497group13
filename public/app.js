@@ -70,7 +70,14 @@ function updateSummary() {
   }
   try {
     const rule = compileRules(entries);
-    $('generation-note').textContent = `Your selected rules allow a ${rule.length}-character password.`;
+    const bounds = [];
+    if (active.some(entry => entry.type === 'min') && rule.min !== rule.length) {
+      bounds.push(`The selected minimum is ${rule.min}.`);
+    }
+    if (active.some(entry => entry.type === 'max') && rule.max !== rule.length) {
+      bounds.push(`The selected maximum is ${rule.max}.`);
+    }
+    $('generation-note').textContent = [...bounds, `You’ll generate a ${rule.length}-character password.`].join(' ');
     $('generate').disabled = false;
   } catch (error) {
     $('error').textContent = error.message;
@@ -179,8 +186,8 @@ function createPassword(shortConfirmed = false) {
   if (!$('replacement').hidden) return;
   try {
     const rule = compileRules(entries);
-    if (rule.length < preferredLength && !shortConfirmed) {
-      $('short-text').textContent = `These rules limit the password to ${rule.length} characters. A shorter password can be easier to guess. If the website allows more, edit the length rule.`;
+    if (rule.max < preferredLength && !shortConfirmed) {
+      $('short-text').textContent = `Your selected rules allow up to ${rule.max} characters. A shorter password can be easier to guess. Generate a ${rule.length}-character password?`;
       $('short-dialog').showModal();
       return;
     }

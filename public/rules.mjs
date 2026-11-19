@@ -1,4 +1,4 @@
-import {groups, lookAlikes, preferredLength, parseRules, validate} from './core.mjs';
+import {groups, lookAlikes, generationLength, parseRules, validate} from './core.mjs';
 
 export const ruleTypes = {
   min: {name:'Minimum length', field:'number', label:'Minimum number of characters'},
@@ -62,8 +62,7 @@ export function compileRules(entries) {
     if(entry.type==='symbols')rule.symbols=entry.value;
     if(entry.type==='excludeSimilar')rule.excludeSimilar=true;
   }
-  const required=Object.values(rule.counts).reduce((sum,n)=>sum+n,0);
-  rule.length=Math.min(max,Math.max(min,required,preferredLength));
+  rule.length = generationLength(rule);
   validate(rule);
   return rule;
 }
