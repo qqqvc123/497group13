@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Password generator | Group 13</title>
+  <meta name="description" content="Paste password requirements, choose the rules, and generate a password you can read and copy.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='13' width='20' height='16' rx='3' fill='%23131827'/%3E%3Cpath d='M10 13V9a6 6 0 0112 0v4' fill='none' stroke='%23131827' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 5l7 7-7 7"/></symbol>
+  <symbol id="icon-pencil" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 15z"/></symbol>
+  <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 5V3H3v13h2"/></symbol>
+  <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 4v6h-6M4 20v-6h6M4.5 8a8 8 0 0 1 13-4L20 7M4 17l2.5 3A8 8 0 0 0 19.5 16"/></symbol>
+  <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="icon-eye-off" viewBox="0 0 24 24"><path d="m3 3 18 18M10 5a12 12 0 0 1 2 0c6 0 10 7 10 7a18 18 0 0 1-3 4M6 6a21 21 0 0 0-4 6s4 7 10 7a11 11 0 0 0 5-1M10 10a3 3 0 0 0 4 4"/></symbol>
+  <symbol id="icon-shield" viewBox="0 0 24 24"><path d="m12 2 8 4v6c0 5-8 10-8 10S4 17 4 12V6zM8 12l3 3 5-6"/></symbol>
+</svg>
+<main>
+  <header class="page-head">
+    <div><h1>Password generator</h1><p class="subtitle">Make a password that fits the website’s rules.</p></div>
+    <div class="privacy"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg>Generated on your device</div>
+  </header>
+  <div class="workspace">
+    <section class="rules-column" aria-labelledby="rules-title">
+      <h2 class="step-title" id="rules-title"><span class="step">1</span>Review the rules</h2>
+      <label id="requirements-label" for="requirements" class="section-label">Website’s password requirements</label>
+      <p id="paste-help" class="hint field-hint">Replace the example with the rules from your website.</p>
+      <div class="paste-box"><textarea id="requirements" rows="3" maxlength="5000" aria-describedby="paste-help" spellcheck="false" placeholder="Paste the website’s password rules here">Minimum 12 characters
+At least 1 uppercase letter
+At least 1 special character</textarea></div>
+      <button type="button" id="clear" class="text-button">Clear text</button>
+      <section id="replacement" class="notice" aria-labelledby="replace-title" hidden>
+        <h3 id="replace-title">Replace your edited rules?</h3>
+        <p>The new text will replace your list, including rules you added or changed.</p>
+        <div class="choice-actions"><button id="keep-edits" type="button">Cancel</button><button id="replace-rules" type="button" class="primary">Replace rules</button></div>
+      </section>
+      <p id="parse-warning" class="notice" role="status" hidden></p>
+      <fieldset id="rule-controls"><legend class="sr-only">Choose rules</legend>
+        <div class="list-heading"><h3>Rules to include</h3><span id="rule-count" class="hint" role="status"></span></div>
+        <p class="hint rule-help">Select a rule to edit it. Uncheck it to leave it out.</p>
+        <ul id="rule-list" class="rule-list" aria-label="Rules to include"></ul>
+        <button type="button" id="add-rule" class="outline"><span class="plus" aria-hidden="true">+</span> Add a rule</button>
+      </fieldset>
+    </section>
+
+    <section class="result-column" aria-labelledby="result-title">
+      <h2 class="step-title" id="result-title" tabindex="-1"><span class="step">2</span>Create your password</h2>
+      <p id="generation-note" class="generation-note" role="status"></p>
+      <p id="error" class="error" role="alert"></p>
+      <button type="button" id="generate" class="primary full" aria-describedby="generation-note error">Generate Password <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+      <div class="password-card">
+        <div class="password-meta"><span id="password-label">Your new password</span><span id="password-length" class="hint"></span></div>
+        <div id="password-display" class="password-display" role="group" aria-labelledby="password-label" tabindex="-1" hidden></div>
+        <input id="password" class="password" type="text" readonly autocomplete="off" spellcheck="false" aria-labelledby="password-label">
+        <button type="button" id="reveal" class="text-button reveal" aria-pressed="true" aria-controls="password password-display reading-help" disabled><svg class="icon" aria-hidden="true"><use href="#icon-eye-off"/></svg><span id="reveal-label">Hide password</span></button>
+      </div>
+      <div class="result-actions">
+        <button type="button" id="copy" class="outline" aria-describedby="empty-state" disabled><svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg><span id="copy-label">Copy password</span></button>
+        <button type="button" id="again" class="outline" aria-describedby="empty-state" disabled><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Regenerate</button>
+      </div>
+      <p id="empty-state" class="hint">Generate a password to use Copy, Regenerate and Hide.</p>
+      <p id="result-status" class="result-status" role="status"></p>
+      <section id="checks-panel" class="soft-panel" aria-labelledby="checks-title" hidden><h3 id="checks-title">Selected rules met</h3><ul id="checklist" class="checklist"></ul></section>
+        <details id="reading-help" hidden>
+          <summary>Character clarity guide <span class="chevron" aria-hidden="true"></span></summary>
+          <ul class="character-key" aria-label="Compare similar characters">
+            <li><code class="password-character number-zero">0</code><span>Number zero</span></li>
+            <li><code class="password-character round-letter">O</code><span>Uppercase O</span></li>
+            <li><code class="password-character round-letter">o</code><span>Lowercase o</span></li>
+          </ul>
+          <p class="hint reading-note">Read your password from left to right. The line through <strong>0</strong> marks the number zero.</p>
+          <div class="reading-table" role="region" aria-label="Each character in your password" tabindex="0"><table><thead><tr><th scope="col">Position</th><th scope="col">Character</th><th scope="col">Easy explanation</th></tr></thead><tbody id="password-characters"></tbody></table></div>
+        </details>
+
+    </section>
+  </div>
+  <footer>Save your password in a password manager. Use a different password for each account.</footer>
+</main>
+<dialog id="rule-dialog" aria-labelledby="dialog-title">
+  <form id="rule-form" novalidate>
+    <div class="dialog-heading"><h2 id="dialog-title">Add a rule</h2><button id="close-dialog" type="button" class="text-button close" aria-label="Close rule editor">×</button></div>
+    <label for="rule-type">Rule type</label><select id="rule-type"></select>
+    <div id="number-field"><label id="number-label" for="rule-number">Minimum number of characters</label><input id="rule-number" type="number" min="1" max="128" value="12" inputmode="numeric"></div>
+    <div id="symbols-field" hidden><label for="rule-symbols">Allowed special characters</label><input id="rule-symbols" type="text" value="!@#$%^&amp;*" autocomplete="off" spellcheck="false"><p class="hint">Enter only the symbols the website accepts, without spaces.</p></div>
+    <p id="boolean-help" class="hint" hidden></p>
+    <p id="dialog-error" class="error" role="alert"></p>
+    <div class="dialog-actions"><button type="button" id="cancel-dialog" class="outline">Cancel</button><button type="submit" class="primary">Save rule</button></div>
+  </form>
+</dialog>
+<dialog id="short-dialog" aria-labelledby="short-title" aria-describedby="short-text">
+  <h2 id="short-title">Use a shorter password?</h2>
+  <p id="short-text"></p>
+  <div class="dialog-actions"><button type="button" id="short-cancel" autofocus>Go back</button><button type="button" id="short-accept" class="primary">Generate anyway</button></div>
+</dialog>
+<script defer src="generator.js"></script>
+</body>
+</html>
